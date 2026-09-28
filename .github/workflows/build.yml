@@ -1,0 +1,44 @@
+name: build-deploy
+on:
+  workflow_dispatch:            # disparo manual
+  schedule:
+    - cron: '0 * * * *'         # de hora em hora (nativo do GitHub Actions, sem depender de cron-job.org)
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false     # Pages: NUNCA cancelar deploy no meio (trava o site). Runs entram em fila.
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gerar data.js (le a Meta Graph API)
+        shell: powershell
+        env:
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+        run: .\build.ps1 -Mode all
+      - name: Montar _site (so arquivos publicos)
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force _site | Out-Null
+          New-Item -ItemType Directory -Force _site\leads | Out-Null
+          Copy-Item index.html,app.js,styles.css,data.js _site\
+          Copy-Item leads\index.html _site\leads\      # pagina do cliente em /leads (sem Trafego Pago)
+          New-Item -ItemType File -Force _site\.nojekyll | Out-Null
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
