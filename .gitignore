@@ -1,0 +1,6 @@
+# data.js é gerado no workflow (le a Meta Graph API na hora) — nunca commitar
+data.js
+_site/
+*.output
+# token da Meta — NUNCA commitar (usado só pra build local)
+.env
